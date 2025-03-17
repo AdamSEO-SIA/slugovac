@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generátor Slugov</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .input-area {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        button {
+            background-color: #0073aa;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #005d87;
+        }
+        .results-area {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            min-height: 50px;
+            word-break: break-all;
+        }
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .copy-button {
+            background-color: #555;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        .copy-button:hover {
+            background-color: #333;
+        }
+        .success-message {
+            color: green;
+            margin-left: 10px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generátor Slugov pre WordPress</h1>
+        <div class="app-container">
+            <div class="input-area">
+                <label for="phrase">Vložte frázu:</label>
+                <input type="text" id="phrase" placeholder="Napr. Veľké auto">
+                <button id="generateSlugButton">Generovať Slug</button>
+            </div>
+            
+            <div class="results-container">
+                <div class="result-title">Výsledný slug:</div>
+                <div id="slugResult" class="results-area"></div>
+                <button id="copySlugButton" class="copy-button">Kopírovať slug</button>
+                <span id="copySuccess" class="success-message">Skopírované!</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const generateSlugButton = document.getElementById('generateSlugButton');
+        const copySlugButton = document.getElementById('copySlugButton');
+        const phraseInput = document.getElementById('phrase');
+        const slugResultDiv = document.getElementById('slugResult');
+        const copySuccess = document.getElementById('copySuccess');
+        
+        // Generovanie slugu pri kliknutí na tlačidlo
+        generateSlugButton.addEventListener('click', generateSlugFromInput);
+        
+        // Generovanie slugu pri stlačení Enter
+        phraseInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                generateSlugFromInput();
+            }
+        });
+        
+        // Kopírovanie slugu
+        copySlugButton.addEventListener('click', function() {
+            const slugText = slugResultDiv.textContent;
+            if (slugText) {
+                navigator.clipboard.writeText(slugText).then(function() {
+                    copySuccess.style.display = 'inline';
+                    setTimeout(function() {
+                        copySuccess.style.display = 'none';
+                    }, 2000);
+                });
+            }
+        });
+        
+        function generateSlugFromInput() {
+            const phrase = phraseInput.value.trim();
+            
+            if (!phrase) {
+                slugResultDiv.textContent = 'Prosím, vložte frázu.';
+                return;
+            }
+            
+            const slug = generateSlug(phrase);
+            slugResultDiv.textContent = slug;
+        }
+        
+        function generateSlug(phrase) {
+            // Špeciálna konverzia pre české a slovenské znaky
+            const charMap = {
+                'á': 'a', 'ä': 'a', 'č': 'c', 'ď': 'd', 'é': 'e', 'í': 'i', 
+                'ĺ': 'l', 'ľ': 'l', 'ň': 'n', 'ó': 'o', 'ô': 'o', 'ŕ': 'r', 
+                'š': 's', 'ť': 't', 'ú': 'u', 'ý': 'y', 'ž': 'z',
+                'ě': 'e', 'ř': 'r', 'ů': 'u', 'ě': 'e', 'ř': 'r', 'ů': 'u'
+            };
+            
+            return phrase
+                .toLowerCase()
+                .split('')
+                .map(char => charMap[char] || char)
+                .join('')
+                .replace(/[^\w\s-]/g, '') // Odstránenie neplatných znakov
+                .trim()
+                .replace(/\s+/g, '-')     // Nahradenie medzier pomlčkami
+                .replace(/-+/g, '-');     // Odstránenie viacerých pomlčiek
+        }
+    });
+    </script>
+</body>
+</html>
