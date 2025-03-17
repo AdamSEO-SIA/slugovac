@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generátor Obsahu a Slugov</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .input-area {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            resize: vertical;
+        }
+        button {
+            background-color: #0073aa;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #005d87;
+        }
+        .results-area {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            min-height: 50px;
+            word-break: break-all;
+        }
+        .toc-result {
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            min-height: 150px;
+        }
+        .result-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        .copy-button {
+            background-color: #555;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+        .copy-button:hover {
+            background-color: #333;
+        }
+        .success-message {
+            color: green;
+            margin-left: 10px;
+            display: none;
+        }
+        .form-row {
+            margin-bottom: 15px;
+        }
+        .toc-item {
+            margin-bottom: 8px;
+        }
+        .level-1 { margin-left: 0; }
+        .level-2 { margin-left: 20px; }
+        .level-3 { margin-left: 40px; }
+        .level-4 { margin-left: 60px; }
+        .level-5 { margin-left: 80px; }
+        .level-6 { margin-left: 100px; }
+        .toc-preview {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 15px;
+            border-radius: 5px;
+            background-color: white;
+        }
+        .toc-preview a {
+            color: #0073aa;
+            text-decoration: none;
+        }
+        .toc-preview a:hover {
+            text-decoration: underline;
+        }
+        .options-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .option-group {
+            flex: 1;
+            min-width: 200px;
+        }
+        .checkbox-group {
+            margin-bottom: 10px;
+        }
+        .html-code {
+            white-space: pre-wrap;
+            font-family: monospace;
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+        .tabs-inner {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin: 15px 0;
+        }
+        .tab-inner {
+            padding: 8px 15px;
+            cursor: pointer;
+            background-color: #f1f1f1;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            margin-right: 3px;
+            font-size: 14px;
+        }
+        .tab-inner.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content-inner {
+            display: none;
+        }
+        .tab-content-inner.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Generátor Obsahu a Slugov pre WordPress</h1>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="slug">Generátor Slugov</div>
+            <div class="tab" data-tab="toc">Generátor Obsahu (TOC)</div>
+        </div>
+        
+        <!-- Tab Slug Generator -->
+        <div class="tab-content active" id="slug-tab">
+            <div class="app-container">
+                <div class="input-area">
+                    <label for="phrase">Vložte frázu:</label>
+                    <input type="text" id="phrase" placeholder="Napr. Veľké auto">
+                    <button id="generateSlugButton">Generovať Slug</button>
+                </div>
+                
+                <div class="results-container">
+                    <div class="result-title">Výsledný slug:</div>
+                    <div id="slugResult" class="results-area"></div>
+                    <button id="copySlugButton" class="copy-button">Kopírovať slug</button>
+                    <span id="copySlugSuccess" class="success-message">Skopírované!</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tab TOC Generator -->
+        <div class="tab-content" id="toc-tab">
+            <div class="app-container">
+                <div class="input-area">
+                    <label for="articleContent">Vložte text článku (s nadpismi H2-H6):</label>
+                    <textarea id="articleContent" placeholder="## Hlavný nadpis&#10;Text článku...&#10;### Podnadpis&#10;Ďalší text..."></textarea>
+                    
+                    <div class="options-area">
+                        <div class="option-group">
+                            <div class="result-title">Nastavenia obsahu:</div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="smoothScroll" checked>
+                                <label for="smoothScroll">Plynulé skrolovanie</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="numbered" checked>
+                                <label for="numbered">Číslované položky</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="includeH2" checked>
+                                <label for="includeH2">Zahrnúť H2</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="includeH3" checked>
+                                <label for="includeH3">Zahrnúť H3</label>
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="includeH4">
+                                <label for="includeH4">Zahrnúť H4</label>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <div class="result-title">Vzhľad obsahu:</div>
+                            <div class="form-row">
+                                <label for="tocTitle">Nadpis obsahu:</label>
+                                <input type="text" id="tocTitle" value="Obsah článku">
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="collapsible">
+                                <label for="collapsible">Rozbaľovací obsah</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button id="generateTocButton">Generovať Obsah</button>
+                </div>
+                
+                <div class="results-container">
+                    <div class="result-title">Náhľad obsahu:</div>
+                    <div id="tocPreview" class="toc-preview"></div>
+                    
+                    <div class="tabs-inner">
+                        <div class="tab-inner active" data-tab="toc-html">HTML kód obsahu</div>
+                        <div class="tab-inner" data-tab="headings-html">HTML kód nadpisov</div>
+                        <div class="tab-inner" data-tab="combined-html">Kompletný HTML kód</div>
+                    </div>
+                    
+                    <div class="tab-content-inner active" id="toc-html-tab">
+                        <div id="tocResult" class="toc-result"></div>
+                        <button id="copyTocButton" class="copy-button">Kopírovať HTML obsahu</button>
+                        <span id="copyTocSuccess" class="success-message">Skopírované!</span>
+                    </div>
+                    
+                    <div class="tab-content-inner" id="headings-html-tab">
+                        <div id="headingsResult" class="toc-result"></div>
+                        <button id="copyHeadingsButton" class="copy-button">Kopírovať HTML nadpisov</button>
+                        <span id="copyHeadingsSuccess" class="success-message">Skopírované!</span>
+                    </div>
+                    
+                    <div class="tab-content-inner" id="combined-html-tab">
+                        <div id="combinedResult" class="toc-result"></div>
+                        <button id="copyCombinedButton" class="copy-button">Kopírovať kompletný HTML</button>
+                        <span id="copyCombinedSuccess" class="success-message">Skopírované!</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab functionality
+        const tabs = document.querySelectorAll('.tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // Update active tab
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show active content
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabId + '-tab').classList.add('active');
+            });
+        });
+        
+        // Inner Tab functionality
+        const innerTabs = document.querySelectorAll('.tab-inner');
+        innerTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const tabId = this.getAttribute('data-tab');
+                
+                // Update active tab
+                document.querySelectorAll('.tab-inner').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Show active content
+                document.querySelectorAll('.tab-content-inner').forEach(c => c.classList.remove('active'));
+                document.getElementById(tabId + '-tab').classList.add('active');
+            });
+        });
+        
+        // SLUG GENERATOR
+        const generateSlugButton = document.getElementById('generateSlugButton');
+        const copySlugButton = document.getElementById('copySlugButton');
+        const phraseInput = document.getElementById('phrase');
+        const slugResultDiv = document.getElementById('slugResult');
+        const copySlugSuccess = document.getElementById('copySlugSuccess');
+        
+        // Generovanie slugu pri kliknutí na tlačidlo
+        generateSlugButton.addEventListener('click', generateSlugFromInput);
+        
+        // Generovanie slugu pri stlačení Enter
+        phraseInput.addEventListener('keyup', function(event) {
+            if (event.key === 'Enter') {
+                generateSlugFromInput();
+            }
+        });
+        
+        // Kopírovanie slugu
+        copySlugButton.addEventListener('click', function() {
+            const slugText = slugResultDiv.textContent;
+            if (slugText) {
+                navigator.clipboard.writeText(slugText).then(function() {
+                    copySlugSuccess.style.display = 'inline';
+                    setTimeout(function() {
+                        copySlugSuccess.style.display = 'none';
+                    }, 2000);
+                });
+            }
+        });
+        
+        function generateSlugFromInput() {
+            const phrase = phraseInput.value.trim();
+            
+            if (!phrase) {
+                slugResultDiv.textContent = 'Prosím, vložte frázu.';
+                return;
+            }
+            
+            const slug = generateSlug(phrase);
+            slugResultDiv.textContent = slug;
+        }
+        
+        function generateSlug(phrase) {
+            // Špeciálna konverzia pre české a slovenské znaky
+            const charMap = {
+                'á': 'a', 'ä': 'a', 'č': 'c', 'ď': 'd', 'é': 'e', 'í': 'i', 
+                'ĺ': 'l', 'ľ': 'l', 'ň': 'n', 'ó': 'o', 'ô': 'o', 'ŕ': 'r', 
+                'š': 's', 'ť': 't', 'ú': 'u', 'ý': 'y', 'ž': 'z',
+                'ě': 'e', 'ř': 'r', 'ů': 'u', 'ě': 'e', 'ř': 'r', 'ů': 'u'
+            };
+            
+            return phrase
+                .toLowerCase()
+                .split('')
+                .map(char => charMap[char] || char)
+                .join('')
+                .replace(/[^\w\s-]/g, '') // Odstránenie neplatných znakov
+                .trim()
+                .replace(/\s+/g, '-')     // Nahradenie medzier pomlčkami
+                .replace(/-+/g, '-');     // Odstránenie viacerých pomlčiek
+        }
+        
+        // TOC GENERATOR
+        const generateTocButton = document.getElementById('generateTocButton');
+        const copyTocButton = document.getElementById('copyTocButton');
+        const copyHeadingsButton = document.getElementById('copyHeadingsButton');
+        const copyCombinedButton = document.getElementById('copyCombinedButton');
+        const articleContentInput = document.getElementById('articleContent');
+        const tocResultDiv = document.getElementById('tocResult');
+        const headingsResultDiv = document.getElementById('headingsResult');
+        const combinedResultDiv = document.getElementById('combinedResult');
+        const tocPreviewDiv = document.getElementById('tocPreview');
+        const copyTocSuccess = document.getElementById('copyTocSuccess');
+        const copyHeadingsSuccess = document.getElementById('copyHeadingsSuccess');
+        const copyCombinedSuccess = document.getElementById('copyCombinedSuccess');
+        
+        generateTocButton.addEventListener('click', generateTocFromInput);
+        
+        copyTocButton.addEventListener('click', function() {
+            const tocHtml = tocResultDiv.querySelector('.html-code').textContent;
+            if (tocHtml) {
+                navigator.clipboard.writeText(tocHtml).then(function() {
+                    copyTocSuccess.style.display = 'inline';
+                    setTimeout(function() {
+                        copyTocSuccess.style.display = 'none';
+                    }, 2000);
+                });
+            }
+        });
+        
+        copyHeadingsButton.addEventListener('click', function() {
+            const headingsHtml = headingsResultDiv.querySelector('.html-code').textContent;
+            if (headingsHtml) {
+                navigator.clipboard.writeText(headingsHtml).then(function() {
+                    copyHeadingsSuccess.style.display = 'inline';
+                    setTimeout(function() {
+                        copyHeadingsSuccess.style.display = 'none';
+                    }, 2000);
+                });
+            }
+        });
+        
+        copyCombinedButton.addEventListener('click', function() {
+            const combinedHtml = combinedResultDiv.querySelector('.html-code').textContent;
+            if (combinedHtml) {
+                navigator.clipboard.writeText(combinedHtml).then(function() {
+                    copyCombinedSuccess.style.display = 'inline';
+                    setTimeout(function() {
+                        copyCombinedSuccess.style.display = 'none';
+                    }, 2000);
+                });
+            }
+        });
+        
+        function generateTocFromInput() {
+            const content = articleContentInput.value.trim();
+            
+            if (!content) {
+                tocResultDiv.innerHTML = '<div class="html-code">Prosím, vložte obsah článku.</div>';
+                headingsResultDiv.innerHTML = '<div class="html-code">Prosím, vložte obsah článku.</div>';
+                combinedResultDiv.innerHTML = '<div class="html-code">Prosím, vložte obsah článku.</div>';
+                tocPreviewDiv.innerHTML = 'Prosím, vložte obsah článku.';
+                return;
+            }
+            
+            // Get options
+            const includeH2 = document.getElementById('includeH2').checked;
+            const includeH3 = document.getElementById('includeH3').checked;
+            const includeH4 = document.getElementById('includeH4').checked;
+            const numbered = document.getElementById('numbered').checked;
+            const smoothScroll = document.getElementById('smoothScroll').checked;
+            const collapsible = document.getElementById('collapsible').checked;
+            const tocTitle = document.getElementById('tocTitle').value.trim() || 'Obsah článku';
+            
+            // Parse headings
+            const headings = parseHeadings(content, includeH2, includeH3, includeH4);
+            
+            if (headings.length === 0) {
+                tocResultDiv.innerHTML = '<div class="html-code">Nenašli sa žiadne nadpisy v článku.</div>';
+                headingsResultDiv.innerHTML = '<div class="html-code">Nenašli sa žiadne nadpisy v článku.</div>';
+                combinedResultDiv.innerHTML = '<div class="html-code">Nenašli sa žiadne nadpisy v článku.</div>';
+                tocPreviewDiv.innerHTML = 'Nenašli sa žiadne nadpisy v článku.';
+                return;
+            }
+            
+            // Generate TOC HTML
+            const { tocHtml, previewHtml } = generateToc(headings, numbered, smoothScroll, collapsible, tocTitle);
+            
+            // Generate HTML headings with IDs
+            const headingsHtml = generateHeadingsHtml(headings);
+            
+            // Generate combined HTML
+            const combinedHtml = tocHtml + '\n\n' + headingsHtml;
+            
+            tocResultDiv.innerHTML = '<div class="html-code">' + escapeHtml(tocHtml) + '</div>';
+            headingsResultDiv.innerHTML = '<div class="html-code">' + escapeHtml(headingsHtml) + '</div>';
+            combinedResultDiv.innerHTML = '<div class="html-code">' + escapeHtml(combinedHtml) + '</div>';
+            tocPreviewDiv.innerHTML = previewHtml;
+        }
+        
+        function parseHeadings(content, includeH2, includeH3, includeH4) {
+            const headings = [];
+            let lines = content.split('\n');
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i].trim();
+                
+                // Check for Markdown headings (##, ###, ####)
+                if (line.startsWith('##')) {
+                    let level = 0;
+                    for (let j = 0; j < line.length; j++) {
+                        if (line[j] === '#') {
+                            level++;
+                        } else {
+                            break;
+                        }
+                    }
+                    
+                    // Only include headings based on options
+                    if ((level === 2 && includeH2) || (level === 3 && includeH3) || (level === 4 && includeH4)) {
+                        const text = line.substring(level).trim();
+                        if (text) {
+                            headings.push({
+                                level: level,
+                                text: text,
+                                slug: generateSlug(text),
+                                originalLine: line,
+                                lineType: 'markdown'
+                            });
+                        }
+                    }
+                }
+                // Check for HTML headings (<h2>, <h3>, <h4>)
+                else if (line.includes('<h') && line.includes('</h')) {
+                    for (let level = 2; level <= 4; level++) {
+                        const openTag = `<h${level}`;
+                        const closeTag = `</h${level}>`;
+                        
+                        if (line.includes(openTag) && line.includes(closeTag) && 
+                            ((level === 2 && includeH2) || (level === 3 && includeH3) || (level === 4 && includeH4))) {
+                            
+                            let startIndex = line.indexOf(openTag);
+                            let endIndex = line.indexOf(closeTag);
+                            let startContentIndex = line.indexOf('>', startIndex) + 1;
+                            
+                            if (startContentIndex < endIndex) {
+                                const text = line.substring(startContentIndex, endIndex).trim();
+                                if (text) {
+                                    headings.push({
+                                        level: level,
+                                        text: text,
+                                        slug: generateSlug(text),
+                                        originalLine: line,
+                                        lineType: 'html'
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return headings;
+        }
+        
+        function generateToc(headings, numbered, smoothScroll, collapsible, tocTitle) {
+            let tocHtml = '';
+            let previewHtml = '';
+            
+            // Start TOC container
+            tocHtml += '<div class="toc-container">\n';
+            previewHtml += '<div class="toc-container">\n';
+            
+            // TOC Title
+            tocHtml += `  <h2>${tocTitle}</h2>\n`;
+            previewHtml += `  <h2>${tocTitle}</h2>\n`;
+            
+            // TOC List
+            if (collapsible) {
+                tocHtml += '  <details open>\n    <summary>Zobraziť/skryť obsah</summary>\n';
+                previewHtml += '  <details open>\n    <summary>Zobraziť/skryť obsah</summary>\n';
+            }
+            
+            tocHtml += '  <ol' + (numbered ? '' : ' style="list-style-type: none;"') + '>\n';
+            previewHtml += '  <ol' + (numbered ? '' : ' style="list-style-type: none;"') + '>\n';
+            
+            let currentLevel = 2;
+            let counters = [0, 0, 0]; // Counters for levels 2, 3, 4
+            
+            headings.forEach((heading, index) => {
+                // Handle level transitions
+                while (currentLevel < heading.level) {
+                    tocHtml += '    <ol' + (numbered ? '' : ' style="list-style-type: none;"') + '>\n';
+                    previewHtml += '    <ol' + (numbered ? '' : ' style="list-style-type: none;"') + '>\n';
+                    currentLevel++;
+                }
+                
+                while (currentLevel > heading.level) {
+                    tocHtml += '    </ol>\n';
+                    previewHtml += '    </ol>\n';
+                    currentLevel--;
+                }
+                
+                // Update counter for current level
+                counters[heading.level - 2]++;
+                // Reset counters for all deeper levels
+                for (let i = heading.level - 1; i < counters.length; i++) {
+                    counters[i] = 0;
+                }
+                
+                // Generate list item with link
+                const scrollAttr = smoothScroll ? ' class="smooth-scroll"' : '';
+                const indent = '    '.repeat(heading.level - 1);
+                
+                tocHtml += `${indent}<li><a href="#${heading.slug}"${scrollAttr}>${heading.text}</a></li>\n`;
+                previewHtml += `${indent}<li><a href="#${heading.slug}" class="level-${heading.level - 1}">${heading.text}</a></li>\n`;
+            });
+            
+            // Close any remaining nested lists
+            while (currentLevel > 2) {
+                tocHtml += '    </ol>\n';
+                previewHtml += '    </ol>\n';
+                currentLevel--;
+            }
+            
+            tocHtml += '  </ol>\n';
+            previewHtml += '  </ol>\n';
+            
+            if (collapsible) {
+                tocHtml += '  </details>\n';
+                previewHtml += '  </details>\n';
+            }
+            
+            tocHtml += '</div>\n';
+            previewHtml += '</div>\n';
+            
+            // Add smooth scroll CSS if needed
+            if (smoothScroll) {
+                tocHtml += `
+<style>
+.smooth-scroll {
+  scroll-behavior: smooth;
+}
+</style>`;
+            }
+            
+            return { tocHtml, previewHtml };
+        }
+        
+        function generateHeadingsHtml(headings) {
+            let html = '';
+            
+            headings.forEach(heading => {
+                if (heading.lineType === 'markdown') {
+                    // Convert markdown heading to HTML with ID
+                    html += `<h${heading.level} id="${heading.slug}">${heading.text}</h${heading.level}>\n`;
+                } else if (heading.lineType === 'html') {
+                    // Replace existing HTML heading with one that has an ID
+                    const openTagPos = heading.originalLine.indexOf(`<h${heading.level}`);
+                    const closeTagPos = heading.originalLine.indexOf('>', openTagPos);
+                    
+                    // Check if ID already exists
+                    const existingIdMatch = heading.originalLine.substring(openTagPos, closeTagPos).match(/id=["']([^"']*)["']/);
+                    
+                    if (existingIdMatch) {
+                        // Replace existing ID
+                        const replacement = heading.originalLine.substring(0, openTagPos) + 
+                                          `<h${heading.level}` + 
+                                          heading.originalLine.substring(openTagPos + 3, existingIdMatch.index) + 
+                                          `id="${heading.slug}"` + 
+                                          heading.originalLine.substring(existingIdMatch.index + existingIdMatch[0].length);
+                        html += replacement + '\n';
+                    } else {
+                        // Add new ID
+                        const replacement = heading.originalLine.substring(0, closeTagPos) + 
+                                          ` id="${heading.slug}"` + 
+                                          heading.originalLine.substring(closeTagPos);
+                        html += replacement + '\n';
+                    }
+                }
+            });
+            
+            return html;
+        }
+        
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    });
+    </script>
+</body>
+</html>
